@@ -6,16 +6,20 @@ services:
     image: app-backend:1.0.0        # осмысленный тег, не latest
     container_name: app
     ports:
+    # пробрасываем порт наружу, чтобы приложение было доступно с хоста
       - "8080:8080"
     environment:
       HTTP_PORT: "8080"
       STATIC_DIR: /app/static
+      # внутри сети compose контейнеры видят друг друга по имени сервиса (db)
       DB_HOST: db
       DB_PORT: "5432"
+      # берём конфиденциальные данные из .env файла
       DB_USER: ${DB_USER:-app}
       DB_PASSWORD: ${DB_PASSWORD:-secret}
       DB_NAME: ${DB_NAME:-appdb}
     volumes:
+    # пробрасывает автоматически всю информацию на localhost
       - ./frontend:/app/static:ro   # read-only монтирование фронта
     depends_on:
       db:
@@ -32,12 +36,14 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
       POSTGRES_DB: ${DB_NAME:-appdb}
     healthcheck:
+    # проверяет готова ли бд принимать подключение
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app} -d ${DB_NAME:-appdb}"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 10s
     volumes:
+    # инструкция для сохранения данных бд при перезагрузки контейнера
       - db_data:/var/lib/postgresql/data
       - ./init:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
@@ -49,5 +55,6 @@ volumes:
   db_data:
 
 networks:
+# создаём изолированную сеть, чтобы приложение общалось само с собой, но не было доступно другим контейнерам на хосте
   app_net:
     driver: bridge
